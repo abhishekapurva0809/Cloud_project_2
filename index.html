@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KubePulse | Futuristic 3D Kubernetes Command Center</title>
+  <meta name="description" content="Next-generation 3D Kubernetes monitoring dashboard featuring real-time cluster topology, telemetry metrics, and pod management.">
+  
+  <!-- Tailwind CSS CDN for utility styles -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cyberNavy: '#060913',
+            cyberCyan: '#00f0ff',
+            cyberViolet: '#a855f7',
+            cyberGreen: '#00ff88',
+            cyberRose: '#ff3366',
+            cyberAmber: '#ffb800',
+          },
+          fontFamily: {
+            sans: ['Outfit', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Design System Styles -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+
+  <!-- Three.js & OrbitControls for 3D Cluster Environment -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Chart.js for High-Performance Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body class="bg-cyberNavy text-slate-100 antialiased selection:bg-cyan-500 selection:text-black">
+
+  <div id="app-root">
+    
+    <!-- ==============================================================
+         SIDEBAR NAVIGATION
+         ============================================================== -->
+    <aside class="app-sidebar">
+      <div class="brand-container">
+        <div class="brand-icon-box">
+          <!-- Stylized Kubernetes Helm Icon -->
+          <svg class="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"></polygon>
+            <circle cx="12" cy="12" r="3"></circle>
+            <line x1="12" y1="2" x2="12" y2="9"></line>
+            <line x1="12" y1="15" x2="12" y2="22"></line>
+            <line x1="2" y1="8.5" x2="8" y2="12"></line>
+            <line x1="16" y1="12" x2="22" y2="8.5"></line>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>KubePulse</h1>
+          <p>3D Cluster Core</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a href="#dashboard" class="nav-link nav-link-active" data-nav-target="dashboard">
+          <span class="nav-link-icon">⚡</span>
+          <span>Overview</span>
+          <span class="nav-link-hotkey">1</span>
+        </a>
+        <a href="#monitoring" class="nav-link" data-nav-target="monitoring">
+          <span class="nav-link-icon">📊</span>
+          <span>Monitoring</span>
+          <span class="nav-link-hotkey">2</span>
+        </a>
+        <a href="#pods" class="nav-link" data-nav-target="pods">
+          <span class="nav-link-icon">📦</span>
+          <span>Pod Management</span>
+          <span class="nav-link-hotkey">3</span>
+        </a>
+        <a href="#nodes" class="nav-link" data-nav-target="nodes">
+          <span class="nav-link-icon">🖥️</span>
+          <span>Node Monitoring</span>
+          <span class="nav-link-hotkey">4</span>
+        </a>
+        <a href="#analytics" class="nav-link" data-nav-target="analytics">
+          <span class="nav-link-icon">📈</span>
+          <span>Analytics</span>
+          <span class="nav-link-hotkey">5</span>
+        </a>
+        <a href="#logs" class="nav-link" data-nav-target="logs">
+          <span class="nav-link-icon">📜</span>
+          <span>Activity Logs</span>
+          <span class="nav-link-hotkey">6</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div>
+          <span class="text-slate-400 block text-[10px]">CLUSTER TARGET</span>
+          <span class="text-cyan-400 font-bold">AWS EC2 / Minikube</span>
+        </div>
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-emerald-400/50 shadow-md"></span>
+      </div>
+    </aside>
+
+    <!-- ==============================================================
+         MAIN APPLICATION VIEWPORT
+         ============================================================== -->
+    <main class="app-main">
+      
+      <!-- Top Cyber Header -->
+      <header class="app-header">
+        <div class="flex items-center gap-3">
+          <div class="header-cluster-badge">
+            <span class="live-pulse-dot"></span>
+            <span id="header-cluster-name" class="font-mono text-xs font-bold text-cyan-300">KUBEPULSE-PROD-EU-WEST-01</span>
+          </div>
+          <span class="hidden md:inline px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400 font-mono text-xs">
+            k8s <span id="header-k8s-version" class="text-purple-300">v1.31.2</span>
+          </span>
+          <span class="hidden lg:inline px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400 font-mono text-xs">
+            Uptime: <span id="header-uptime" class="text-slate-200">42d 18h</span>
+          </span>
+        </div>
+
+        <div class="header-actions">
+          <!-- Audio SFX Toggle Button -->
+          <button id="btn-toggle-sound" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-cyan-400 font-mono text-xs flex items-center gap-1.5 transition" title="Toggle Synthesized Audio Feedback">
+            <span>🔊</span>
+            <span class="hidden sm:inline">Audio SFX</span>
+          </button>
+
+          <!-- Trigger Test Event Button -->
+          <button id="btn-generate-test-event" class="btn-cyber-outline text-xs py-1.5 px-3 flex items-center gap-1.5">
+            <span>⚡</span>
+            <span>Simulate Event</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Content Pages Container -->
+      <div class="page-container">
+
+        <!-- ==========================================================
+             VIEW 1: OVERVIEW / DASHBOARD (3D CENTERPIECE)
+             ========================================================== -->
+        <section id="view-dashboard" class="app-page-view active-view">
+          
+          <!-- KPI Cards Grid -->
+          <div class="kpi-grid">
+            <!-- Total Nodes -->
+            <div class="cyber-card kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-label">Total Nodes</span>
+                <span class="kpi-icon">🖥️</span>
+              </div>
+              <div class="kpi-value-row">
+                <span id="kpi-total-nodes" class="kpi-value text-cyan-300">5</span>
+                <span id="kpi-ready-nodes-badge" class="kpi-badge kpi-badge-green">5/5 Ready</span>
+              </div>
+            </div>
+
+            <!-- Total Pods -->
+            <div class="cyber-card kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-label">Total Pods</span>
+                <span class="kpi-icon">📦</span>
+              </div>
+              <div class="kpi-value-row">
+                <span id="kpi-total-pods" class="kpi-value text-slate-100">28</span>
+                <span id="kpi-pod-capacity" class="kpi-badge kpi-badge-cyan">Cap: 150</span>
+              </div>
+            </div>
+
+            <!-- Running Pods -->
+            <div class="cyber-card kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-label">Running Pods</span>
+                <span class="kpi-icon">🟢</span>
+              </div>
+              <div class="kpi-value-row">
+                <span id="kpi-running-pods" class="kpi-value text-emerald-400">23</span>
+                <span id="kpi-running-ratio" class="kpi-badge kpi-badge-green">82%</span>
+              </div>
+            </div>
+
+            <!-- Failed Pods -->
+            <div id="kpi-failed-card" class="cyber-card kpi-card border-rose-500/50">
+              <div class="kpi-header">
+                <span class="kpi-label">Failed Pods</span>
+                <span class="kpi-icon">🔴</span>
+              </div>
+              <div class="kpi-value-row">
+                <span id="kpi-failed-pods" class="kpi-value text-rose-400">2</span>
+                <span class="kpi-badge kpi-badge-rose">Alert Active</span>
+              </div>
+            </div>
+
+            <!-- Pending Pods -->
+            <div class="cyber-card kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-label">Pending Pods</span>
+                <span class="kpi-icon">🟡</span>
+              </div>
+              <div class="kpi-value-row">
+                <span id="kpi-pending-pods" class="kpi-value text-amber-400">3</span>
+                <span class="kpi-badge kpi-badge-amber">Scheduling</span>
+              </div>
+            </div>
+
+            <!-- Cluster Health -->
+            <div class="cyber-card kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-label">Cluster Health</span>
+                <span class="kpi-icon">❤️‍🩹</span>
+              </div>
+              <div class="kpi-value-row">
+                <span id="kpi-cluster-health" class="kpi-value text-cyan-400">98.6%</span>
+                <span class="kpi-badge kpi-badge-cyan">Optimal</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3D KUBERNETES ENVIRONMENT (CENTERPIECE) -->
+          <div class="viewport-3d-wrapper">
+            <!-- HUD Top Left -->
+            <div class="hud-overlay-top-left">
+              <div class="hud-title-badge">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                <span>HOLOGRAPHIC 3D CLUSTER TOPOLOGY // LIVE</span>
+              </div>
+            </div>
+
+            <!-- 3D Status Legend Top Right -->
+            <div class="hud-legend">
+              <div class="legend-item">
+                <span class="legend-dot legend-dot-running"></span>
+                <span>Running Pod</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot legend-dot-pending"></span>
+                <span>Pending / Updating</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot legend-dot-failed"></span>
+                <span>Failed / CrashLoop</span>
+              </div>
+            </div>
+
+            <!-- 3D Canvas Mount Point -->
+            <div id="cluster-3d-viewport"></div>
+
+            <!-- HUD Bottom Left Camera Controls -->
+            <div class="hud-overlay-controls">
+              <button class="btn-hud" data-cam-preset="overview">🌐 Overview</button>
+              <button class="btn-hud" data-cam-preset="controlPlane">🧠 Control Plane</button>
+              <button class="btn-hud" data-cam-preset="workers">⚙️ Worker Orbit</button>
+              <button class="btn-hud" data-cam-preset="topDown">📐 Top-Down</button>
+              <button id="btn-toggle-autorotate" class="btn-hud btn-hud-active">🔄 Auto-Rotate</button>
+            </div>
+          </div>
+
+          <!-- Quick Telemetry & Health Gauges under 3D Scene -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="cyber-card p-5 space-y-3">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="text-cyan-400 font-bold uppercase tracking-wider">Cluster CPU Load</span>
+                <span class="text-slate-300">38.4 / 64 Cores</span>
+              </div>
+              <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden p-0.5 border border-slate-800">
+                <div class="bg-gradient-to-r from-cyan-500 via-sky-400 to-blue-500 h-full rounded-full transition-all duration-500" style="width: 60%"></div>
+              </div>
+              <div class="flex justify-between text-[11px] font-mono text-slate-400">
+                <span>Utilization: 60.0%</span>
+                <span class="text-emerald-400">✓ Safe Threshold</span>
+              </div>
+            </div>
+
+            <div class="cyber-card p-5 space-y-3">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="text-purple-400 font-bold uppercase tracking-wider">Memory Allocation</span>
+                <span class="text-slate-300">168.9 / 256 GiB</span>
+              </div>
+              <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden p-0.5 border border-slate-800">
+                <div class="bg-gradient-to-r from-purple-500 via-violet-400 to-pink-500 h-full rounded-full transition-all duration-500" style="width: 66%"></div>
+              </div>
+              <div class="flex justify-between text-[11px] font-mono text-slate-400">
+                <span>Utilization: 66.0%</span>
+                <span class="text-emerald-400">✓ Quota Normal</span>
+              </div>
+            </div>
+
+            <!-- Active Crash Alert Banner with 1-click inspect -->
+            <div class="cyber-card p-5 space-y-2 border-rose-500/40 bg-rose-950/20">
+              <div class="flex justify-between items-center text-xs font-mono">
+                <span class="text-rose-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                  Active Crash Diagnostic
+                </span>
+                <span class="px-2 py-0.5 rounded bg-rose-950 text-rose-300 text-[10px]">OOMKilled</span>
+              </div>
+              <p class="text-xs text-slate-300 font-mono">payment-processor-6c68bf764-crash</p>
+              <div class="flex gap-2 pt-1">
+                <button class="btn-cyber text-[11px] py-1 px-3" onclick="window.kubepulseApp.ui.openPodLogsModal('payment-processor-6c68bf764-crash')">View Container Logs</button>
+                <button class="btn-cyber-outline text-[11px] py-1 px-3" onclick="window.kubepulseApp.ui.switchTab('pods')">Manage Pods</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================================
+             VIEW 2: KUBERNETES MONITORING PAGE
+             ========================================================== -->
+        <section id="view-monitoring" class="app-page-view hidden space-y-6">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-xl font-bold text-slate-100 font-mono">Kubernetes Cluster Health & Architecture</h2>
+              <p class="text-xs text-slate-400 font-mono mt-1">Control plane status, daemon health, and core deployment orchestrators.</p>
+            </div>
+          </div>
+
+          <!-- Cluster Architecture Specs Grid -->
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="cyber-card p-4">
+              <span class="text-slate-500 block text-[10px] font-mono uppercase">K8S VERSION</span>
+              <span id="mon-k8s-version" class="text-cyan-400 font-mono font-bold text-sm">v1.31.2</span>
+            </div>
+            <div class="cyber-card p-4">
+              <span class="text-slate-500 block text-[10px] font-mono uppercase">API LATENCY</span>
+              <span id="mon-api-latency" class="text-emerald-400 font-mono font-bold text-sm">14 ms</span>
+            </div>
+            <div class="cyber-card p-4">
+              <span class="text-slate-500 block text-[10px] font-mono uppercase">ETCD QUORUM</span>
+              <span id="mon-etcd" class="text-slate-200 font-mono font-bold text-sm">3/3 Healthy</span>
+            </div>
+            <div class="cyber-card p-4">
+              <span class="text-slate-500 block text-[10px] font-mono uppercase">CNI MESH</span>
+              <span id="mon-cni" class="text-purple-400 font-mono font-bold text-sm">Cilium eBPF</span>
+            </div>
+            <div class="cyber-card p-4">
+              <span class="text-slate-500 block text-[10px] font-mono uppercase">CLUSTER UPTIME</span>
+              <span id="mon-uptime" class="text-slate-200 font-mono font-bold text-sm">42d 18h</span>
+            </div>
+          </div>
+
+          <!-- Deployments Table -->
+          <div class="cyber-card p-5 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-sm text-cyan-400 font-mono uppercase tracking-wider">Cluster Deployments</h3>
+              <span class="text-xs text-slate-400 font-mono">Live Rollout Status</span>
+            </div>
+            <div class="cyber-table-container">
+              <table class="cyber-table">
+                <thead>
+                  <tr>
+                    <th>Deployment Name</th>
+                    <th>Namespace</th>
+                    <th>Replicas</th>
+                    <th>Strategy</th>
+                    <th>Age</th>
+                    <th>Condition</th>
+                  </tr>
+                </thead>
+                <tbody id="deployments-table-body">
+                  <!-- Injected via JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Top Restart Offenders -->
+          <div class="cyber-card p-5 space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-sm text-rose-400 font-mono uppercase tracking-wider">Top Restart Offenders & Diagnostic Logs</h3>
+              <span class="text-xs text-slate-400 font-mono">CrashLoop / High Restarts</span>
+            </div>
+            <div id="restart-offenders-list" class="space-y-3">
+              <!-- Injected via JavaScript -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================================
+             VIEW 3: POD MANAGEMENT PAGE
+             ========================================================== -->
+        <section id="view-pods" class="app-page-view hidden space-y-5">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-slate-100 font-mono">Pod Management & Containers</h2>
+              <p class="text-xs text-slate-400 font-mono mt-1">Search, filter, inspect container metrics, view logs, and simulate restarts.</p>
+            </div>
+            <span id="pod-table-count-badge" class="px-3 py-1 rounded bg-cyan-950/80 border border-cyan-800 text-cyan-400 font-mono text-xs font-bold">
+              28 Pods
+            </span>
+          </div>
+
+          <!-- Search and Filter Bar -->
+          <div class="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+            <!-- Search Input -->
+            <div class="relative w-full md:w-80">
+              <input id="input-pod-search" type="text" class="cyber-input w-full pl-9" placeholder="Search pod name, namespace, or node...">
+              <span class="absolute left-3 top-2.5 text-slate-500 text-xs">🔍</span>
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="filter-pills-bar">
+              <button class="filter-pod-pill pill-active" data-status-filter="all">All</button>
+              <button class="filter-pod-pill" data-status-filter="running">Running</button>
+              <button class="filter-pod-pill" data-status-filter="failed">Failed</button>
+              <button class="filter-pod-pill" data-status-filter="pending">Pending</button>
+            </div>
+
+            <!-- Namespace Dropdown -->
+            <select id="select-pod-namespace" class="cyber-select w-full md:w-auto">
+              <option value="all">All Namespaces</option>
+              <option value="production">production</option>
+              <option value="kube-system">kube-system</option>
+              <option value="monitoring">monitoring</option>
+              <option value="ingress-nginx">ingress-nginx</option>
+              <option value="ai-workloads">ai-workloads</option>
+              <option value="messaging">messaging</option>
+            </select>
+          </div>
+
+          <!-- Pods Interactive Table -->
+          <div class="cyber-table-container">
+            <table class="cyber-table">
+              <thead>
+                <tr>
+                  <th>Pod Name</th>
+                  <th>Namespace</th>
+                  <th>Node</th>
+                  <th>Status</th>
+                  <th>Restarts</th>
+                  <th>CPU Usage</th>
+                  <th>Memory</th>
+                  <th>Age</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="pods-table-body">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==========================================================
+             VIEW 4: NODE MONITORING PAGE
+             ========================================================== -->
+        <section id="view-nodes" class="app-page-view hidden space-y-6">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-xl font-bold text-slate-100 font-mono">Kubernetes Node Infrastructure</h2>
+              <p class="text-xs text-slate-400 font-mono mt-1">Worker platforms, resource pressure, kubelet status, and cordon controls.</p>
+            </div>
+          </div>
+
+          <!-- Node Cards Grid -->
+          <div id="nodes-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <!-- Injected via JavaScript -->
+          </div>
+        </section>
+
+        <!-- ==========================================================
+             VIEW 5: ANALYTICS PAGE
+             ========================================================== -->
+        <section id="view-analytics" class="app-page-view hidden space-y-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-slate-100 font-mono">Cluster Telemetry Analytics</h2>
+              <p class="text-xs text-slate-400 font-mono mt-1">Historical CPU, Memory, Pod health trends, and network bandwidth.</p>
+            </div>
+            <!-- Time Window Selector -->
+            <div class="flex gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-800 text-xs font-mono">
+              <button class="px-3 py-1 rounded bg-cyan-950 text-cyan-400 font-bold border border-cyan-800">1h</button>
+              <button class="px-3 py-1 rounded text-slate-400 hover:text-slate-200">6h</button>
+              <button class="px-3 py-1 rounded text-slate-400 hover:text-slate-200">24h</button>
+              <button class="px-3 py-1 rounded text-slate-400 hover:text-slate-200">7d</button>
+            </div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- CPU Chart -->
+            <div class="cyber-card p-5 space-y-3">
+              <div class="flex justify-between items-center">
+                <h3 class="font-bold text-xs font-mono uppercase text-cyan-400">CPU Utilization Over Time (%)</h3>
+                <span class="text-xs font-mono text-slate-500">Peak: 72%</span>
+              </div>
+              <div class="h-64">
+                <canvas id="chart-cpu-history"></canvas>
+              </div>
+            </div>
+
+            <!-- Memory Chart -->
+            <div class="cyber-card p-5 space-y-3">
+              <div class="flex justify-between items-center">
+                <h3 class="font-bold text-xs font-mono uppercase text-purple-400">Memory Utilization Over Time (%)</h3>
+                <span class="text-xs font-mono text-slate-500">Peak: 68%</span>
+              </div>
+              <div class="h-64">
+                <canvas id="chart-mem-history"></canvas>
+              </div>
+            </div>
+
+            <!-- Pods Timeline Chart -->
+            <div class="cyber-card p-5 space-y-3">
+              <div class="flex justify-between items-center">
+                <h3 class="font-bold text-xs font-mono uppercase text-emerald-400">Running vs Failed Pods Timeline</h3>
+                <span class="text-xs font-mono text-slate-500">Cluster Pod Health</span>
+              </div>
+              <div class="h-64">
+                <canvas id="chart-pods-timeline"></canvas>
+              </div>
+            </div>
+
+            <!-- Network I/O Chart -->
+            <div class="cyber-card p-5 space-y-3">
+              <div class="flex justify-between items-center">
+                <h3 class="font-bold text-xs font-mono uppercase text-sky-400">Network Throughput (Ingress / Egress Mbps)</h3>
+                <span class="text-xs font-mono text-slate-500">eBPF Data Flow</span>
+              </div>
+              <div class="h-64">
+                <canvas id="chart-network-io"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cluster Activity Bar Chart -->
+          <div class="cyber-card p-5 space-y-3">
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-xs font-mono uppercase text-cyan-400">Hourly Cluster Activity & Event Volume</h3>
+              <span class="text-xs font-mono text-slate-500">K8s API Event Frequency</span>
+            </div>
+            <div class="h-56">
+              <canvas id="chart-activity-freq"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================================
+             VIEW 6: ACTIVITY LOGS PAGE
+             ========================================================== -->
+        <section id="view-logs" class="app-page-view hidden space-y-5">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-slate-100 font-mono">Cluster Activity Logs & Events</h2>
+              <p class="text-xs text-slate-400 font-mono mt-1">Live audit stream of Pod lifecycles, node readiness, and deployment changes.</p>
+            </div>
+            <div class="flex gap-2">
+              <button id="btn-pause-logs" class="btn-cyber-outline text-xs py-1.5 px-3">⏸ Pause Stream</button>
+              <button id="btn-export-logs" class="btn-cyber text-xs py-1.5 px-3">💾 Export JSON</button>
+            </div>
+          </div>
+
+          <!-- Logs Feed Container -->
+          <div id="activity-logs-container" class="space-y-2.5">
+            <!-- Injected via JavaScript -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- ==============================================================
+         INTERACTIVE SIDE DRAWER (NODE / POD TELEMETRY HUD)
+         ============================================================== -->
+    <aside id="side-drawer" class="translate-x-full">
+      <div class="drawer-header">
+        <div>
+          <span id="drawer-badge" class="px-2 py-0.5 rounded text-xs font-mono font-medium bg-cyan-950/80 text-cyan-400 border border-cyan-800">
+            Node
+          </span>
+          <h2 id="drawer-title" class="font-bold text-base font-mono text-slate-100 mt-1">
+            k8s-worker-01
+          </h2>
+        </div>
+        <button id="btn-close-drawer" class="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold text-sm">
+          ✕
+        </button>
+      </div>
+
+      <div id="drawer-body" class="drawer-body">
+        <!-- Dynamically injected telemetry -->
+      </div>
+    </aside>
+
+    <!-- ==============================================================
+         MODAL CONTAINER (LOGS STREAMER & YAML MANIFEST VIEWER)
+         ============================================================== -->
+    <div id="modal-container" class="hidden">
+      <div class="modal-content-box">
+        <div class="modal-header">
+          <h3 id="modal-title" class="font-bold font-mono text-sm text-slate-200">
+            Container Logs
+          </h3>
+          <button class="btn-close-modal w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold text-sm">
+            ✕
+          </button>
+        </div>
+        <div id="modal-body" class="modal-body">
+          <!-- Dynamically injected terminal/YAML content -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ==============================================================
+         TOAST CONTAINER
+         ============================================================== -->
+    <div id="toast-container"></div>
+
+  </div>
+
+  <!-- Main ES Module Bootstrap -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
